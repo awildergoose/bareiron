@@ -152,6 +152,9 @@ inline void task_yield() { Sleep(1); }
 // every time a block is broken.
 #define ENABLE_PICKUP_ANIMATION
 
+// If defined, players are able to receive damage from nearby cacti.
+#define ENABLE_CACTUS_DAMAGE
+
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
 
@@ -248,11 +251,25 @@ typedef struct {
   uint8_t y;
   short z;
   // Lower 5 bits: health
-  // Upper 3 bits: reserved (?)
+  // Middle 1 bit: sheep sheared, unused for other mobs
+  // Upper 2 bits: panic timer
   uint8_t data;
 } MobData;
 
 #pragma pack(pop)
+
+union EntityDataValue {
+  uint8_t byte;
+  int pose;
+};
+
+typedef struct {
+  uint8_t index;
+  // 0 - Byte
+  // 21 - Pose
+  int type;
+  union EntityDataValue value;
+} EntityData;
 
 extern BlockChange block_changes[MAX_BLOCK_CHANGES];
 extern int block_changes_count;

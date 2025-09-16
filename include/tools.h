@@ -8,10 +8,10 @@
 #endif
 #include "globals.h"
 
-inline int mod_abs (int a, int b) {
+static inline int mod_abs (int a, int b) {
   return ((a % b) + b) % b;
 }
-inline int div_floor (int a, int b) {
+static inline int div_floor (int a, int b) {
   return a % b < 0 ? (a - b) / b : a / b;
 }
 

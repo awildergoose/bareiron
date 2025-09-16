@@ -94,7 +94,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (sc_registries(client_fd)) break;
 
         #ifdef SEND_BRAND
-        if (sc_sendPluginMessage(client_fd, "minecraft:brand", brand, brand_len)) break;
+        if (sc_sendPluginMessage(client_fd, "minecraft:brand", (uint8_t *)brand, brand_len)) break;
         #endif
       }
       break;
@@ -133,34 +133,32 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         // Send full client spawn sequence
         spawnPlayer(player);
 
-        // Prepare join message for broadcast
-        uint8_t player_name_len = strlen(player->name);
-        strcpy((char *)recv_buffer, player->name);
-        strcpy((char *)recv_buffer + player_name_len, " joined the game");
-
-        // Register all existing players and spawn their entities, and broadcast
-        // information about the joining player to all existing players.
+        // Register all existing players and spawn their entities
         for (int i = 0; i < MAX_PLAYERS; i ++) {
           if (player_data[i].client_fd == -1) continue;
-          if (player_data[i].flags & 0x20 && player_data[i].client_fd != client_fd) continue;
+          // Note that this will also filter out the joining player
+          if (player_data[i].flags & 0x20) continue;
           sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
-          sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, 16 + player_name_len);
-          if (player_data[i].client_fd == client_fd) continue;
-          sc_playerInfoUpdateAddPlayer(player_data[i].client_fd, *player);
           sc_spawnEntityPlayer(client_fd, player_data[i]);
-          sc_spawnEntityPlayer(player_data[i].client_fd, *player);
         }
 
-        // Send information about all other entities (mobs)
-        // For more info on the arguments, see the spawnMob function
+        // Send information about all other entities (mobs):
+        // Use a random number for the first half of the UUID
+        uint8_t uuid[16];
+        uint32_t r = fast_rand();
+        memcpy(uuid, &r, 4);
+        // Send allocated living mobs, use ID for second half of UUID
         for (int i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
           if ((mob_data[i].data & 31) == 0) continue;
+          memcpy(uuid + 4, &i, 4);
+          // For more info on the arguments here, see the spawnMob function
           sc_spawnEntity(
-            client_fd, -2 - i, recv_buffer,
+            client_fd, -2 - i, uuid,
             mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,
             0, 0
           );
+          broadcastMobMetadata(client_fd, -2 - i);
         }
 
       }
@@ -223,15 +221,17 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
+        uint8_t block_feet = getBlockAt(player->x, player->y, player->z);
+        uint8_t swimming = block_feet >= B_water && block_feet < B_water + 8;
+
         // Handle fall damage
         if (on_ground) {
           int16_t damage = player->grounded_y - player->y - 3;
-          if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2)) {
-            uint8_t block_feet = getBlockAt(player->x, player->y, player->z);
-            if (block_feet < B_water || block_feet > B_water + 7) {
-              hurtEntity(client_fd, -1, D_fall, damage);
-            }
+          if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2) && !swimming) {
+            hurtEntity(client_fd, -1, D_fall, damage);
           }
+          player->grounded_y = player->y;
+        } else if (swimming) {
           player->grounded_y = player->y;
         }
 
@@ -438,17 +438,16 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       if (state == STATE_PLAY) cs_playerInput(client_fd);
       break;
 
-    case 0x2B: { // Player Loaded
-      PlayerData *player;
-      if (getPlayerData(client_fd, &player)) break;
-      // Clear "client loading" flag and fallback timer
-      player->flags &= ~0x20;
-      player->flagval_16 = 0;
+    case 0x2B:
+      if (state == STATE_PLAY) cs_playerLoaded(client_fd);
       break;
-    }
 
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
+      break;
+	
+    case 0x3C:
+      if (state == STATE_PLAY) cs_swingArm(client_fd);
       break;
 
     case 0x28:
@@ -500,6 +499,13 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 }
 
 int main () {
+  #ifdef _WIN32 //initialize windows socket
+    WSADATA wsa;
+      if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        fprintf(stderr, "WSAStartup failed\n");
+        exit(EXIT_FAILURE);
+      }
+  #endif
 
   // Hash the seeds to ensure they're random enough
   world_seed = splitmix64(world_seed);
@@ -537,8 +543,12 @@ int main () {
     perror("socket failed");
     exit(EXIT_FAILURE);
   }
-
+#ifdef _WIN32
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
+      (const char*)&opt, sizeof(opt)) < 0) {
+#else
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+#endif    
     perror("socket options failed");
     exit(EXIT_FAILURE);
   }
@@ -564,8 +574,16 @@ int main () {
 
   // Make the socket non-blocking
   // This is necessary to not starve the idle task during slow connections
+  #ifdef _WIN32
+    u_long mode = 1;  // 1 = non-blocking
+    if (ioctlsocket(server_fd, FIONBIO, &mode) != 0) {
+      fprintf(stderr, "Failed to set non-blocking mode\n");
+      exit(EXIT_FAILURE);
+    }
+  #else
   int flags = fcntl(server_fd, F_GETFL, 0);
   fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
+  #endif
 
   // Track time of last server tick (in microseconds)
   int64_t last_tick_time = get_program_time();
@@ -586,8 +604,13 @@ int main () {
       // If the accept was successful, make the client non-blocking too
       if (clients[i] != -1) {
         printf("New client, fd: %d\n", clients[i]);
+      #ifdef _WIN32
+        u_long mode = 1;
+        ioctlsocket(clients[i], FIONBIO, &mode);
+      #else
         int flags = fcntl(clients[i], F_GETFL, 0);
         fcntl(clients[i], F_SETFL, flags | O_NONBLOCK);
+      #endif
         client_count ++;
       }
       break;
@@ -609,6 +632,22 @@ int main () {
     int client_fd = clients[client_index];
 
     // Check if at least 2 bytes are available for reading
+    #ifdef _WIN32
+    recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
+    if (recv_count == 0) {
+      disconnectClient(&clients[client_index], 1);
+      continue;
+    }
+    if (recv_count == SOCKET_ERROR) {
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        continue; // no data yet, keep client alive
+      } else {
+        disconnectClient(&clients[client_index], 1);
+        continue;
+      }
+    }
+    #else
     recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
     if (recv_count < 2) {
       if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
@@ -616,7 +655,7 @@ int main () {
       }
       continue;
     }
-
+    #endif
     // Handle 0xBEEF and 0xFEED packets for dumping/uploading world data
     #ifdef DEV_ENABLE_BEEF_DUMPS
     // Received BEEF packet, dump world data and disconnect
@@ -683,6 +722,11 @@ int main () {
   }
 
   close(server_fd);
+ 
+  #ifdef _WIN32 //cleanup windows socket
+    WSACleanup();
+  #endif
+
   printf("Server closed.\n");
 
 }

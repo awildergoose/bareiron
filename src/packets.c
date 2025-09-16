@@ -764,6 +764,47 @@ int cs_setPlayerMovementFlags (int client_fd, uint8_t *on_ground) {
 
   *on_ground = readByte(client_fd) & 0x01;
 
+  PlayerData *player;
+  if (!getPlayerData(client_fd, &player))
+    broadcastPlayerMetadata(player);
+
+  return 0;
+}
+
+// C->S Swing Arm (serverbound)
+int cs_swingArm (int client_fd) {
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  uint8_t hand = readVarInt(client_fd);
+
+  uint8_t animation = 255;
+  switch (hand) {
+    case 0: {
+      animation = 0;
+      break;
+    }
+    case 1: {
+      animation = 2;
+      break;
+    }
+  }
+
+  if (animation == 255)
+    return 1;
+
+  // Forward animation to all connected players
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    PlayerData* other_player = &player_data[i];
+
+    if (other_player->client_fd == -1) continue;
+    if (other_player->client_fd == player->client_fd) continue;
+    if (other_player->flags & 0x20) continue;
+
+    sc_entityAnimation(other_player->client_fd, player->client_fd, animation);
+  }
+
   return 0;
 }
 
@@ -873,6 +914,26 @@ int sc_spawnEntity (
   return 0;
 }
 
+// S->C Set Entity Metadata
+int sc_setEntityMetadata (int client_fd, int id, EntityData *metadata, size_t length) {
+  int entity_metadata_size = sizeEntityMetadata(metadata, length);
+  if (entity_metadata_size == -1) return 1;
+
+  writeVarInt(client_fd, 2 + sizeVarInt(id) + entity_metadata_size);
+  writeByte(client_fd, 0x5C);
+
+  writeVarInt(client_fd, id); // Entity ID
+
+  for (size_t i = 0; i < length; i ++) {
+    EntityData *data = &metadata[i];
+    writeEntityData(client_fd, data);
+  }
+
+  writeByte(client_fd, 0xFF); // End
+
+  return 0;
+}
+
 // S->C Spawn Entity (from PlayerData)
 int sc_spawnEntityPlayer (int client_fd, PlayerData player) {
   return sc_spawnEntity(
@@ -883,6 +944,17 @@ int sc_spawnEntityPlayer (int client_fd, PlayerData player) {
     player.z > 0 ? (double)player.z + 0.5 : (float)player.z - 0.5,
     player.yaw, player.pitch
   );
+}
+
+// S->C Entity Animation
+int sc_entityAnimation (int client_fd, int id, uint8_t animation) {
+  writeVarInt(client_fd, 2 + sizeVarInt(id));
+  writeByte(client_fd, 0x02);
+
+  writeVarInt(client_fd, id); // Entity ID
+  writeByte(client_fd, animation); // Animation
+
+  return 0;
 }
 
 // S->C Teleport Entity
@@ -1107,7 +1179,9 @@ int cs_interact (int client_fd) {
   // Ignore sneaking flag
   recv_all(client_fd, recv_buffer, 1, false);
 
-  if (type == 1) {
+  if (type == 0) { // Interact
+    interactEntity(entity_id, client_fd);
+  } else if (type == 1) { // Attack
     hurtEntity(entity_id, client_fd, D_generic, 1);
   }
 
@@ -1150,6 +1224,8 @@ int cs_playerInput (int client_fd) {
   if (flags & 0x20) player->flags |= 0x04;
   else player->flags &= ~0x04;
 
+  broadcastPlayerMetadata(player);
+
   return 0;
 }
 
@@ -1167,6 +1243,8 @@ int cs_playerCommand (int client_fd) {
   if (action == 1) player->flags |= 0x08;
   else if (action == 2) player->flags &= ~0x08;
 
+  broadcastPlayerMetadata(player);
+
   return 0;
 }
 
@@ -1179,6 +1257,18 @@ int sc_pickupItem (int client_fd, int collected, int collector, uint8_t count) {
   writeVarInt(client_fd, collected);
   writeVarInt(client_fd, collector);
   writeVarInt(client_fd, count);
+
+  return 0;
+}
+
+// C->S Player Loaded
+int cs_playerLoaded (int client_fd) {
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  // Redirect handling to player join procedure
+  handlePlayerJoin(player);
 
   return 0;
 }

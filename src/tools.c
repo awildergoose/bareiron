@@ -103,7 +103,11 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
 
   // Busy-wait (with task yielding) until all data has been sent
   while (sent < len) {
-    ssize_t n = send(client_fd, p + sent, len - sent, MSG_NOSIGNAL);
+    #ifdef _WIN32
+      ssize_t n = send(client_fd, p + sent, len - sent, 0);
+    #else
+      ssize_t n = send(client_fd, p + sent, len - sent, MSG_NOSIGNAL);
+    #endif
     if (n > 0) { // some data was sent, log it
       sent += n;
       last_update_time = get_program_time();
@@ -114,7 +118,12 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
       return -1;
     }
     // not yet ready to transmit, try again
+    #ifdef _WIN32 //handles windows socket timeout
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK || err == WSAEINTR) {
+    #else
     if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+    #endif
       // handle network timeout
       if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
         disconnectClient(&client_fd, -2);

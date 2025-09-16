@@ -45,6 +45,7 @@ int initSerializer () {
     size_t read = fread(block_changes, 1, sizeof(block_changes), file);
     if (read != sizeof(block_changes)) {
       printf("Read %u bytes from \"world.bin\", expected %u (block changes). Aborting.\n", read, sizeof(block_changes));
+      fclose(file);
       return 1;
     }
     // Find the index of the last occupied entry to recover block_changes_count
@@ -56,6 +57,7 @@ int initSerializer () {
     // Seek past block changes to start reading player data
     if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
       perror("Failed to seek to player data in \"world.bin\". Aborting.");
+      fclose(file);
       return 1;
     }
     // Read player data directly into memory
@@ -86,6 +88,7 @@ int initSerializer () {
         "Failed to write initial block data to \"world.bin\".\n"
         "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
       );
+      fclose(file);
       return 1;
     }
     // Seek past written block changes to start writing player data
@@ -94,6 +97,7 @@ int initSerializer () {
         "Failed to seek past block changes in \"world.bin\"."
         "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
       );
+      fclose(file);
       return 1;
     }
     // Write initial player data to disk (should be just nulls?)
@@ -114,12 +118,6 @@ int initSerializer () {
 
 // Writes a range of block change entries to disk
 void writeBlockChangesToDisk (int from, int to) {
-
-  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
-    // Skip this write if enough time hasn't passed since the last one
-    if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
-    last_disk_sync_time = get_program_time();
-  #endif
 
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
@@ -149,10 +147,6 @@ void writeBlockChangesToDisk (int from, int to) {
 // Writes all player data to disk
 void writePlayerDataToDisk () {
 
-  // Skip this write if enough time hasn't passed since the last one
-  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
-  last_disk_sync_time = get_program_time();
-
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
   if (!file) {
@@ -174,6 +168,21 @@ void writePlayerDataToDisk () {
   }
 
   fclose(file);
+}
+
+// Writes data queued for interval writes, but only if enough time has passed
+void writeDataToDiskOnInterval () {
+
+  // Skip this write if enough time hasn't passed since the last one
+  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
+  last_disk_sync_time = get_program_time();
+
+  // Write full player data and block changes buffers
+  writePlayerDataToDisk();
+  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
+  writeBlockChangesToDisk(0, block_changes_count);
+  #endif
+
 }
 
 #ifdef ALLOW_CHESTS
