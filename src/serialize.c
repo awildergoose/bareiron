@@ -3,39 +3,38 @@
 #ifdef SYNC_WORLD_TO_DISK
 
 #ifdef ESP_PLATFORM
-  #include "esp_littlefs.h"
-  #define FILE_PATH "/littlefs/world.bin"
+#include "esp_littlefs.h"
+#define FILE_PATH "/littlefs/world.bin"
 #else
-  #include <stdio.h>
-  #define FILE_PATH "world.bin"
+#include <stdio.h>
+#define FILE_PATH "world.bin"
 #endif
 
-#include "tools.h"
 #include "registries.h"
 #include "serialize.h"
+#include "tools.h"
+
 
 int64_t last_disk_sync_time = 0;
 
 // Restores world data from disk, or writes world file if it doesn't exist
-int initSerializer () {
+int initSerializer() {
 
   last_disk_sync_time = get_program_time();
 
-  #ifdef ESP_PLATFORM
-    esp_vfs_littlefs_conf_t conf = {
-      .base_path = "/littlefs",
-      .partition_label = "littlefs",
-      .format_if_mount_failed = true,
-      .dont_mount = false
-    };
+#ifdef ESP_PLATFORM
+  esp_vfs_littlefs_conf_t conf = {.base_path = "/littlefs",
+                                  .partition_label = "littlefs",
+                                  .format_if_mount_failed = true,
+                                  .dont_mount = false};
 
-    esp_err_t ret = esp_vfs_littlefs_register(&conf);
-    if (ret != ESP_OK) {
-      printf("LittleFS error %d\n", ret);
-      perror("Failed to mount LittleFS. Aborting.");
-      return 1;
-    }
-  #endif
+  esp_err_t ret = esp_vfs_littlefs_register(&conf);
+  if (ret != ESP_OK) {
+    printf("LittleFS error %d\n", ret);
+    perror("Failed to mount LittleFS. Aborting.");
+    return 1;
+  }
+#endif
 
   // Attempt to open existing world file
   FILE *file = fopen(FILE_PATH, "rb");
@@ -44,15 +43,20 @@ int initSerializer () {
     // Read block changes from the start of the file directly into memory
     size_t read = fread(block_changes, 1, sizeof(block_changes), file);
     if (read != sizeof(block_changes)) {
-      printf("Read %zu bytes from \"world.bin\", expected %llu (block changes). Aborting.\n", read, sizeof(block_changes));
+      printf("Read %zu bytes from \"world.bin\", expected %llu (block "
+             "changes). Aborting.\n",
+             read, sizeof(block_changes));
       fclose(file);
       return 1;
     }
     // Find the index of the last occupied entry to recover block_changes_count
-    for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
-      if (block_changes[i].block == 0xFF) continue;
-      if (block_changes[i].block == B_chest) i += 14;
-      if (i >= block_changes_count) block_changes_count = i + 1;
+    for (int i = 0; i < MAX_BLOCK_CHANGES; i++) {
+      if (block_changes[i].block == 0xFF)
+        continue;
+      if (block_changes[i].block == B_chest)
+        i += 14;
+      if (i >= block_changes_count)
+        block_changes_count = i + 1;
     }
     // Seek past block changes to start reading player data
     if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
@@ -64,7 +68,9 @@ int initSerializer () {
     read = fread(player_data, 1, sizeof(player_data), file);
     fclose(file);
     if (read != sizeof(player_data)) {
-      printf("Read %zu bytes from \"world.bin\", expected %llu (player data). Aborting.\n", read, sizeof(player_data));
+      printf("Read %zu bytes from \"world.bin\", expected %llu (player data). "
+             "Aborting.\n",
+             read, sizeof(player_data));
       return 1;
     }
 
@@ -74,29 +80,26 @@ int initSerializer () {
     // Try to create the file in binary write mode
     file = fopen(FILE_PATH, "wb");
     if (!file) {
-      perror(
-        "Failed to open \"world.bin\" for writing.\n"
-        "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
-      );
+      perror("Failed to open \"world.bin\" for writing.\n"
+             "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in "
+             "\"globals.h\".");
       return 1;
     }
     // Write initial block changes array
     // This should be done after all entries have had `block` set to 0xFF
     size_t written = fwrite(block_changes, 1, sizeof(block_changes), file);
     if (written != sizeof(block_changes)) {
-      perror(
-        "Failed to write initial block data to \"world.bin\".\n"
-        "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
-      );
+      perror("Failed to write initial block data to \"world.bin\".\n"
+             "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in "
+             "\"globals.h\".");
       fclose(file);
       return 1;
     }
     // Seek past written block changes to start writing player data
     if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
-      perror(
-        "Failed to seek past block changes in \"world.bin\"."
-        "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
-      );
+      perror("Failed to seek past block changes in \"world.bin\"."
+             "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in "
+             "\"globals.h\".");
       fclose(file);
       return 1;
     }
@@ -104,20 +107,18 @@ int initSerializer () {
     written = fwrite(player_data, 1, sizeof(player_data), file);
     fclose(file);
     if (written != sizeof(player_data)) {
-      perror(
-        "Failed to write initial player data to \"world.bin\".\n"
-        "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
-      );
+      perror("Failed to write initial player data to \"world.bin\".\n"
+             "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in "
+             "\"globals.h\".");
       return 1;
     }
-
   }
 
   return 0;
 }
 
 // Writes a range of block change entries to disk
-void writeBlockChangesToDisk (int from, int to) {
+void writeBlockChangesToDisk(int from, int to) {
 
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
@@ -126,17 +127,20 @@ void writeBlockChangesToDisk (int from, int to) {
     return;
   }
 
-  for (int i = from; i <= to; i ++) {
+  for (int i = from; i <= to; i++) {
     // Seek to relevant offset in file
     if (fseek(file, i * sizeof(BlockChange), SEEK_SET) != 0) {
       fclose(file);
-      perror("Failed to seek in \"world.bin\". Block updates have been dropped.");
+      perror(
+          "Failed to seek in \"world.bin\". Block updates have been dropped.");
       return;
     }
     // Write block change entry to file
-    if (fwrite(&block_changes[i], 1, sizeof(BlockChange), file) != sizeof(BlockChange)) {
+    if (fwrite(&block_changes[i], 1, sizeof(BlockChange), file) !=
+        sizeof(BlockChange)) {
       fclose(file);
-      perror("Failed to write to \"world.bin\". Block updates have been dropped.");
+      perror(
+          "Failed to write to \"world.bin\". Block updates have been dropped.");
       return;
     }
   }
@@ -145,7 +149,7 @@ void writeBlockChangesToDisk (int from, int to) {
 }
 
 // Writes all player data to disk
-void writePlayerDataToDisk () {
+void writePlayerDataToDisk() {
 
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
@@ -156,14 +160,17 @@ void writePlayerDataToDisk () {
   // Seek past block changes in file
   if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
     fclose(file);
-    perror("Failed to seek in \"world.bin\". Player updates have been dropped.");
+    perror(
+        "Failed to seek in \"world.bin\". Player updates have been dropped.");
     return;
   }
   // Write full player data array to file
   // Since this is a bigger write, it should ideally be done infrequently
-  if (fwrite(&player_data, 1, sizeof(player_data), file) != sizeof(player_data)) {
+  if (fwrite(&player_data, 1, sizeof(player_data), file) !=
+      sizeof(player_data)) {
     fclose(file);
-    perror("Failed to write to \"world.bin\". Player updates have been dropped.");
+    perror(
+        "Failed to write to \"world.bin\". Player updates have been dropped.");
     return;
   }
 
@@ -171,23 +178,23 @@ void writePlayerDataToDisk () {
 }
 
 // Writes data queued for interval writes, but only if enough time has passed
-void writeDataToDiskOnInterval () {
+void writeDataToDiskOnInterval() {
 
   // Skip this write if enough time hasn't passed since the last one
-  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
+  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL)
+    return;
   last_disk_sync_time = get_program_time();
 
   // Write full player data and block changes buffers
   writePlayerDataToDisk();
-  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
+#ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
   writeBlockChangesToDisk(0, block_changes_count);
-  #endif
-
+#endif
 }
 
 #ifdef ALLOW_CHESTS
 // Writes a chest slot change to disk
-void writeChestChangesToDisk (uint8_t *storage_ptr, uint8_t slot) {
+void writeChestChangesToDisk(uint8_t *storage_ptr, uint8_t slot) {
   /**
    * More chest-related memory hacks!!
    *
@@ -207,7 +214,9 @@ void writeChestChangesToDisk (uint8_t *storage_ptr, uint8_t slot) {
    * the block entry pertaining to the relevant chest slot, as each
    * entry encodes exactly 2 slots.
    */
-  int index = (int)(storage_ptr - (uint8_t *)block_changes) / sizeof(BlockChange) + slot / 2;
+  int index =
+      (int)(storage_ptr - (uint8_t *)block_changes) / sizeof(BlockChange) +
+      slot / 2;
   writeBlockChangesToDisk(index, index);
 }
 #endif

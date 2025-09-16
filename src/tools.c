@@ -11,10 +11,8 @@
 
 #else
 #ifdef _WIN32
-#include <win/arpa/inet.h>
-#include <win/sys/socket.h>
-#include <win/unistd.h>
-
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -109,7 +107,7 @@ ssize_t send_all(int client_fd, const void *buf, ssize_t len) {
   // Busy-wait (with task yielding) until all data has been sent
   while (sent < len) {
 #ifdef _WIN32
-    ssize_t n = send(client_fd, p + sent, len - sent, 0);
+    ssize_t n = send(client_fd, (char *)p + sent, len - sent, 0);
 #else
     ssize_t n = send(client_fd, p + sent, len - sent, MSG_NOSIGNAL);
 #endif
@@ -259,6 +257,68 @@ char *format(const char *fmt, ...) {
 }
 
 #ifndef ESP_PLATFORM
+#ifdef _WIN32
+// https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
+LARGE_INTEGER getFILETIMEoffset() {
+  SYSTEMTIME s;
+  FILETIME f;
+  LARGE_INTEGER t;
+
+  s.wYear = 1970;
+  s.wMonth = 1;
+  s.wDay = 1;
+  s.wHour = 0;
+  s.wMinute = 0;
+  s.wSecond = 0;
+  s.wMilliseconds = 0;
+  SystemTimeToFileTime(&s, &f);
+  t.QuadPart = f.dwHighDateTime;
+  t.QuadPart <<= 32;
+  t.QuadPart |= f.dwLowDateTime;
+  return (t);
+}
+
+int clock_gettime(int X, struct timespec *ts) {
+  LARGE_INTEGER t;
+  FILETIME f;
+  double microseconds;
+  static LARGE_INTEGER offset;
+  static double frequencyToMicroseconds;
+  static int initialized = 0;
+  static BOOL usePerformanceCounter = 0;
+
+  if (!initialized) {
+    LARGE_INTEGER performanceFrequency;
+    initialized = 1;
+    usePerformanceCounter = QueryPerformanceFrequency(&performanceFrequency);
+    if (usePerformanceCounter) {
+      QueryPerformanceCounter(&offset);
+      frequencyToMicroseconds =
+          (double)performanceFrequency.QuadPart / 1000000.;
+    } else {
+      offset = getFILETIMEoffset();
+      frequencyToMicroseconds = 10.;
+    }
+  }
+
+  if (usePerformanceCounter)
+    QueryPerformanceCounter(&t);
+  else {
+    GetSystemTimeAsFileTime(&f);
+    t.QuadPart = f.dwHighDateTime;
+    t.QuadPart <<= 32;
+    t.QuadPart |= f.dwLowDateTime;
+  }
+
+  t.QuadPart -= offset.QuadPart;
+  microseconds = (double)t.QuadPart / frequencyToMicroseconds;
+
+  ts->tv_sec = (time_t)(microseconds / 1000000);
+  ts->tv_nsec = (long)((microseconds - ts->tv_sec * 1000000) * 1000);
+  return 0;
+}
+#endif
+
 // Returns system time in microseconds.
 // On ESP-IDF, this is available in "esp_timer.h", and returns time *since
 // the start of the program*, and NOT wall clock time. To ensure
@@ -268,4 +328,5 @@ int64_t get_program_time() {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
 }
+
 #endif

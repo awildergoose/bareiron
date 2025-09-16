@@ -1,16 +1,8 @@
 #include <stdint.h>
-#ifdef _WIN32
-#include <win/arpa/inet.h>
-#include <win/unistd.h>
-#else
-#include <arpa/inet.h>
-#include <unistd.h>
-#endif
 
 #include "globals.h"
 #include "tools.h"
 #include "varnum.h"
-
 
 int32_t readVarInt(int client_fd) {
   int32_t value = 0;
