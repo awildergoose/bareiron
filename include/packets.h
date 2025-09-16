@@ -30,6 +30,7 @@ int cs_playerInput(int client_fd);
 int cs_playerCommand(int client_fd);
 int cs_playerLoaded(int client_fd);
 int cs_chatCommand(int client_fd);
+int cs_setCreativeModeSlot(int client_fd);
 
 // Clientbound packets
 int sc_statusResponse(int client_fd);

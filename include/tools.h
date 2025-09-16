@@ -26,12 +26,14 @@ ssize_t writeDouble(int client_fd, double num);
 
 uint8_t readByte(int client_fd);
 uint16_t readUint16(int client_fd);
-int16_t readInt16(int client_fd);
 uint32_t readUint32(int client_fd);
 uint64_t readUint64(int client_fd);
+int16_t readInt16(int client_fd);
 int64_t readInt64(int client_fd);
 float readFloat(int client_fd);
 double readDouble(int client_fd);
+inline uint16_t readUShort(int client_fd) { return readUint16(client_fd); }
+inline int16_t readShort(int client_fd) { return readInt16(client_fd); }
 
 void readString(int client_fd);
 

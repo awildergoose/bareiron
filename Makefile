@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Iinclude -O0 -g0 -include-pch include/pch.h.pch
+CFLAGS=-Iinclude -O0 -g0 -fuse-ld=lld -include-pch include/pch.h.pch
 LDFLAGS=-lws2_32 -fuse-ld=lld
 
 SRCS=$(wildcard src/*.c)
@@ -17,5 +17,4 @@ include/pch.h.pch: include/pch.h
 	$(CC) -x c-header include/pch.h -Iinclude -o include/pch.h.pch
 
 clean:
-	del /Q $(OBJS) bareiron.exe
-	del /Q include/pch.h.pch
+	rm -f $(OBJS) bareiron.exe include/pch.h.pch

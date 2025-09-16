@@ -225,8 +225,8 @@ typedef struct {
   uint16_t saturation;
   uint8_t hotbar;
   uint16_t inventory_items[41];
-  uint16_t craft_items[9];
   uint8_t inventory_count[41];
+  uint16_t craft_items[9];
   uint8_t craft_count[9];
   // Usage depends on player's flags, see below
   // When no flags are set, acts as cursor item ID

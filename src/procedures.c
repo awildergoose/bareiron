@@ -15,7 +15,6 @@
 #include "varnum.h"
 #include "worldgen.h"
 
-
 int client_states[MAX_PLAYERS * 2];
 
 void setClientState(int client_fd, int new_state) {

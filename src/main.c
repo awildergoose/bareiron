@@ -527,6 +527,11 @@ void handlePacket(int client_fd, int length, int packet_id, int state) {
       cs_chatCommand(client_fd);
     break;
 
+  case 0x37:
+    if (state == STATE_PLAY)
+      cs_setCreativeModeSlot(client_fd);
+    break;
+
   default:
 #ifdef DEV_LOG_UNKNOWN_PACKETS
     printf("Unknown packet: 0x");
