@@ -21,16 +21,12 @@
 #else
 #include <sys/types.h>
 #ifdef _WIN32
-#include <win/arpa/inet.h>
-#include <win/netinet/in.h>
-#include <win/sys/socket.h>
-#include <win/unistd.h>
-
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <unistd.h>
 
 #endif
 #endif
@@ -639,14 +635,22 @@ int main() {
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
       0) {
     perror("bind failed");
+#ifdef _WIN32
+    closesocket(server_fd);
+#else
     close(server_fd);
+#endif
     exit(EXIT_FAILURE);
   }
 
   // Listen for incoming connections
   if (listen(server_fd, 5) < 0) {
     perror("listen failed");
+#ifdef _WIN32
+    closesocket(server_fd);
+#else
     close(server_fd);
+#endif
     exit(EXIT_FAILURE);
   }
   printf("Server listening on port %d...\n", PORT);
@@ -716,7 +720,7 @@ int main() {
 
 // Check if at least 2 bytes are available for reading
 #ifdef _WIN32
-    recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
+    recv_count = recv(client_fd, (char *)recv_buffer, 2, MSG_PEEK);
     if (recv_count == 0) {
       disconnectClient(&clients[client_index], 1);
       continue;
@@ -810,7 +814,11 @@ int main() {
     }
   }
 
+#ifdef _WIN32
+  closesocket(server_fd);
+#else
   close(server_fd);
+#endif
 
 #ifdef _WIN32 // cleanup windows socket
   WSACleanup();

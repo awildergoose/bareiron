@@ -1,9 +1,7 @@
 #ifndef H_PROCEDURES
 #define H_PROCEDURES
 
-#ifdef _WIN32
-#include <win/unistd.h>
-#else
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 

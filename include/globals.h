@@ -3,12 +3,11 @@
 
 #include <stdint.h>
 #ifdef _WIN32
-#include <win/unistd.h>
-#define _X86_
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;
 #else
 #include <unistd.h>
 #endif
-#include <synchapi.h>
 
 #ifdef ESP_PLATFORM
 #define WIFI_SSID "your-ssid"

@@ -1,9 +1,7 @@
 #ifndef H_TOOLS
 #define H_TOOLS
 
-#ifdef _WIN32
-#include <win/unistd.h>
-#else
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 #include "globals.h"
