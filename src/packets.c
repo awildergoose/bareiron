@@ -1,4 +1,3 @@
-#include "brigadier.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -336,23 +335,6 @@ int sc_updateTime(int client_fd, uint64_t ticks) {
 
   return 0;
 }
-
-typedef enum {
-  GAME_EVENT_NO_RESPAWN_BLOCK = 0,
-  GAME_EVENT_BEGIN_RAINING = 1,
-  GAME_EVENT_END_RAINING = 2,
-  GAME_EVENT_CHANGE_GAME_MODE = 3,
-  GAME_EVENT_WIN_GAME = 4,
-  GAME_EVENT_DEMO_EVENT = 5,
-  GAME_EVENT_ARROW_HIT_PLAYER = 6,
-  GAME_EVENT_RAIN_LEVEL_CHANGE = 7,
-  GAME_EVENT_THUNDER_LEVEL_CHANGE = 8,
-  GAME_EVENT_PUFFERFISH_STING = 9,
-  GAME_EVENT_ELDER_GUARDIAN_APPEARANCE = 10,
-  GAME_EVENT_ENABLE_RESPAWN_SCREEN = 11,
-  GAME_EVENT_LIMITED_CRAFTING = 12,
-  GAME_EVENT_START_WAITING_FOR_CHUNKS = 13
-} GameEvent;
 
 // S->C Game Event 13
 int sc_gameEvent(int client_fd, GameEvent event, float value) {
@@ -1368,42 +1350,14 @@ int sc_registries(int client_fd) {
   return 0;
 }
 
-#include "packetbuilder.h"
+#include "commands.h"
 
 int cs_chatCommand(int client_fd) {
   readString(client_fd);
   if (recv_count == -1)
     return 1;
 
-  PlayerData *player;
-  if (getPlayerData(client_fd, &player))
-    return 1;
-
-  if (strcmp((char *)recv_buffer, "c") == 0) {
-    sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, GAMEMODE_CREATIVE);
-    player->gamemode = GAMEMODE_CREATIVE;
-    return 0;
-  }
-  if (strcmp((char *)recv_buffer, "s") == 0) {
-    sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, GAMEMODE_SURVIVAL);
-    player->gamemode = GAMEMODE_SURVIVAL;
-    return 0;
-  }
-  if (strcmp((char *)recv_buffer, "endtest") == 0) {
-    PacketBuilder *pb = pb_create(128);
-    pb_writeByte(pb, 4);
-    pb_writeFloat(pb, 1);
-    pb_send(pb, client_fd, 0x22);
-    pb_free(pb);
-
-    return 0;
-  }
-
-  char *s = format("Unknown command: %s", (char *)recv_buffer);
-  sc_systemChat(client_fd, s, strlen(s));
-  free(s);
-
-  return 0;
+  return handle_command(parse_command((char *)recv_buffer), client_fd);
 }
 
 int cs_setCreativeModeSlot(int client_fd) {
