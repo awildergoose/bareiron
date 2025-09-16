@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
 #endif
@@ -44,7 +43,6 @@
 #include "tools.h"
 #include "varnum.h"
 #include "worldgen.h"
-
 
 /**
  * Routes an incoming packet to its packet handler or procedure.
@@ -254,7 +252,8 @@ void handlePacket(int client_fd, int length, int packet_id, int state) {
       // Handle fall damage
       if (on_ground) {
         int16_t damage = player->grounded_y - player->y - 3;
-        if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2) && !swimming) {
+        if (damage > 0 && (player->gamemode == 0 || player->gamemode == 2) &&
+            !swimming) {
           hurtEntity(client_fd, -1, D_fall, damage);
         }
         player->grounded_y = player->y;

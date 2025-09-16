@@ -34,8 +34,8 @@ void task_yield();
 // Manhattan distance at which mobs despawn
 #define MOB_DESPAWN_DISTANCE 256
 
-// Server game mode: 0 - survival; 1 - creative; 2 - adventure; 3 - spectator
-#define GAMEMODE 0
+// Server game mode
+#define GAMEMODE GAMEMODE_SURVIVAL
 
 // Max render distance, determines how many chunks to send
 #define VIEW_DISTANCE 2
@@ -172,6 +172,11 @@ void task_yield();
 #define STATE_CONFIGURATION 4
 #define STATE_PLAY 5
 
+#define GAMEMODE_SURVIVAL 0
+#define GAMEMODE_CREATIVE 1
+#define GAMEMODE_ADVENTURE 2
+#define GAMEMODE_SPECTATOR 3
+
 extern ssize_t recv_count;
 extern uint8_t recv_buffer[256];
 
@@ -237,6 +242,7 @@ typedef struct {
   // 0x20 - client loading, uses flagval_16 as fallback timer
   // 0x40 - movement update cooldown
   uint8_t flags;
+  uint8_t gamemode;
 } PlayerData;
 
 typedef struct {

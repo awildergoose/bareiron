@@ -1371,12 +1371,18 @@ int cs_chatCommand(int client_fd) {
   if (recv_count == -1)
     return 1;
 
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player))
+    return 1;
+
   if (strcmp((char *)recv_buffer, "c") == 0) {
     sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, 1);
+    player->gamemode = GAMEMODE_CREATIVE;
     return 0;
   }
   if (strcmp((char *)recv_buffer, "s") == 0) {
     sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, 0);
+    player->gamemode = GAMEMODE_SURVIVAL;
     return 0;
   }
 
