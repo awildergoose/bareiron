@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdint.h>
 #ifdef _WIN64
   #include <win/arpa/inet.h>

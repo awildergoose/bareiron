@@ -30,7 +30,6 @@
   #include <arpa/inet.h>
   #include <unistd.h>
 #endif
-  #include <time.h>
 #endif
 
 #include "globals.h"
@@ -272,8 +271,8 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (should_broadcast) {
           // If the packet had no rotation data, calculate it from player data
           if (packet_id == 0x1D) {
-            yaw = player->yaw * 180 / 127;
-            pitch = player->pitch * 90 / 127;
+            yaw = player->yaw * 180.0 / 127;
+            pitch = player->pitch * 90.0 / 127;
           }
           // Send current position data to all connected players
           for (int i = 0; i < MAX_PLAYERS; i ++) {
@@ -320,10 +319,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (cy < 0) {
           cy = 0;
           player->grounded_y = 0;
-          sc_synchronizePlayerPosition(client_fd, cx, 0, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
+          sc_synchronizePlayerPosition(client_fd, cx, 0, cz, player->yaw * 180.0 / 127, player->pitch * 90.0 / 127);
         } else if (cy > 255) {
           cy = 255;
-          sc_synchronizePlayerPosition(client_fd, cx, 255, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
+          sc_synchronizePlayerPosition(client_fd, cx, 255, cz, player->yaw * 180.0 / 127, player->pitch * 90.0 / 127);
         }
 
         // Update position in player data

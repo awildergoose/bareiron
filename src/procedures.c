@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
@@ -317,8 +316,8 @@ void spawnPlayer (PlayerData *player) {
     spawn_x = (float)player->x + 0.5;
     spawn_y = player->y;
     spawn_z = (float)player->z + 0.5;
-    spawn_yaw = player->yaw * 180 / 127;
-    spawn_pitch = player->pitch * 90 / 127;
+    spawn_yaw = player->yaw * 180.0 / 127;
+    spawn_pitch = player->pitch * 90.0 / 127;
   }
 
   // Teleport player to spawn coordinates (first pass)
@@ -458,8 +457,8 @@ uint8_t getBlockChange (short x, uint8_t y, short z) {
       block_changes[i].z == z
     ) return block_changes[i].block;
     #ifdef ALLOW_CHESTS
-      // Skip chest contents
-      if (block_changes[i].block == B_chest) i += 14;
+    // Skip chest contents
+    if (block_changes[i].block == B_chest) i += 14;
     #endif
   }
   return 0xFF;
@@ -1882,7 +1881,7 @@ void handleServerTick (int64_t time_since_last_tick) {
       sc_teleportEntity (
         player_data[j].client_fd, entity_id,
         (double)new_x + 0.5, new_y, (double)new_z + 0.5,
-        yaw * 360 / 256, 0
+        yaw * 360.0 / 256, 0
       );
       sc_setHeadRotation(player_data[j].client_fd, entity_id, yaw);
     }
