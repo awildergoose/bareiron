@@ -2,7 +2,7 @@
 #define H_GLOBALS
 
 #include <stdint.h>
-#ifdef _WIN64
+#ifdef _WIN32
 #include <win/unistd.h>
 #define _X86_
 #else

@@ -8,7 +8,7 @@
 #include "lwip/sockets.h"
 
 #else
-#ifdef _WIN64
+#ifdef _WIN32
 #include <win/arpa/inet.h>
 #include <win/unistd.h>
 #else

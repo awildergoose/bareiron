@@ -10,7 +10,7 @@
 #include "lwip/sockets.h"
 
 #else
-#ifdef _WIN64
+#ifdef _WIN32
 #include <win/arpa/inet.h>
 #include <win/sys/socket.h>
 #include <win/unistd.h>
@@ -32,7 +32,7 @@
 #include "tools.h"
 #include "varnum.h"
 
-#ifndef _WIN64
+#ifndef _WIN32
 #ifndef htonll
 static uint64_t htonll(uint64_t value) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__

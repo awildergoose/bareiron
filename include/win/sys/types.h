@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#if defined(_MSC_VER) || defined(_WIN64)
+#if defined(_MSC_VER) || defined(_WIN32)
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
 #else

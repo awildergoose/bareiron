@@ -1,7 +1,7 @@
 #ifndef H_TOOLS
 #define H_TOOLS
 
-#ifdef _WIN64
+#ifdef _WIN32
 #include <win/unistd.h>
 #else
 #include <unistd.h>

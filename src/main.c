@@ -20,7 +20,7 @@
 
 #else
 #include <sys/types.h>
-#ifdef _WIN64
+#ifdef _WIN32
 #include <win/arpa/inet.h>
 #include <win/netinet/in.h>
 #include <win/sys/socket.h>

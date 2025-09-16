@@ -35,7 +35,7 @@ static inline int fcntl(int fd, int cmd, long arg) {
   return -1;
 }
 
-#if defined(_MSC_VER) || defined(_WIN64)
+#if defined(_MSC_VER) || defined(_WIN32)
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
 #else

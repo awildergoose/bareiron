@@ -1,30 +1,31 @@
 #include <stdint.h>
-#ifdef _WIN64
-  #include <win/arpa/inet.h>
-  #include <win/unistd.h>
+#ifdef _WIN32
+#include <win/arpa/inet.h>
+#include <win/unistd.h>
 #else
-  #include <arpa/inet.h>
-  #include <unistd.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #endif
 
 #include "globals.h"
 
 #ifdef ESP_PLATFORM
-  #include "esp_task_wdt.h"
-  #include "esp_timer.h"
+#include "esp_task_wdt.h"
+#include "esp_timer.h"
 
-  // Time between vTaskDelay calls in microseconds
-  #define TASK_YIELD_INTERVAL 1000 * 1000
-  // How many ticks to delay for on each yield
-  #define TASK_YIELD_TICKS 1
+// Time between vTaskDelay calls in microseconds
+#define TASK_YIELD_INTERVAL 1000 * 1000
+// How many ticks to delay for on each yield
+#define TASK_YIELD_TICKS 1
 
-  int64_t last_yield = 0;
-  void task_yield () {
-    int64_t time_now = esp_timer_get_time();
-    if (time_now - last_yield < TASK_YIELD_INTERVAL) return;
-    vTaskDelay(TASK_YIELD_TICKS);
-    last_yield = time_now;
-  }
+int64_t last_yield = 0;
+void task_yield() {
+  int64_t time_now = esp_timer_get_time();
+  if (time_now - last_yield < TASK_YIELD_INTERVAL)
+    return;
+  vTaskDelay(TASK_YIELD_TICKS);
+  last_yield = time_now;
+}
 #endif
 
 ssize_t recv_count;
@@ -36,12 +37,12 @@ uint32_t rng_seed = INITIAL_RNG_SEED;
 uint16_t world_time = 0;
 uint32_t server_ticks = 0;
 
-char motd[] = { "A bareiron server" };
+char motd[] = {"A bareiron server"};
 uint8_t motd_len = sizeof(motd) - 1;
 
 #ifdef SEND_BRAND
-  char brand[] = { "bareiron" };
-  uint8_t brand_len = sizeof(brand) - 1;
+char brand[] = {"bareiron"};
+uint8_t brand_len = sizeof(brand) - 1;
 #endif
 
 uint16_t client_count;
