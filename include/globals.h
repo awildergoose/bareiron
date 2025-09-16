@@ -15,11 +15,7 @@
 #define WIFI_PASS "your-password"
 void task_yield();
 #else
-#ifdef _WIN64
-inline void task_yield() { Sleep(1); }
-#else
 #define task_yield() ;
-#endif
 #endif
 
 #define true 1

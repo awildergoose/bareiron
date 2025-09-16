@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <win/netinet/in.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -45,15 +46,6 @@ static inline const char *inet_ntop(int af, const void *src, char *dst,
 #endif
 }
 #endif
-
-#define htonl(x)                                                               \
-  (((uint32_t)(x) << 24) | (((uint32_t)(x) & 0x0000FF00) << 8) |               \
-   (((uint32_t)(x) & 0x00FF0000) >> 8) | ((uint32_t)(x) >> 24))
-#define ntohl(x) htonl(x)
-#define htons(x)                                                               \
-  ((uint16_t)((((uint16_t)(x) << 8) & 0xff00) |                                \
-              (((uint16_t)(x) >> 8) & 0x00ff)))
-#define ntohs(x) htons(x)
 
 #ifdef __cplusplus
 }
