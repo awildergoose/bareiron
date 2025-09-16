@@ -213,6 +213,8 @@ int sc_finishConfiguration(int client_fd) {
 
 // S->C Login (play)
 int sc_loginPlay(int client_fd) {
+  PlayerData *player;
+  int isNewPlayer = getPlayerData(client_fd, &player);
 
   writeVarInt(client_fd,
               47 + sizeVarInt(MAX_PLAYERS) + sizeVarInt(VIEW_DISTANCE) * 2);
@@ -246,7 +248,7 @@ int sc_loginPlay(int client_fd) {
   // hashed seed
   writeUint64(client_fd, 0x0123456789ABCDEF);
   // gamemode
-  writeByte(client_fd, GAMEMODE);
+  writeByte(client_fd, isNewPlayer ? GAMEMODE : player->gamemode);
   // previous gamemode
   writeByte(client_fd, 0xFF);
   // is debug
@@ -1376,12 +1378,12 @@ int cs_chatCommand(int client_fd) {
     return 1;
 
   if (strcmp((char *)recv_buffer, "c") == 0) {
-    sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, 1);
+    sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, GAMEMODE_CREATIVE);
     player->gamemode = GAMEMODE_CREATIVE;
     return 0;
   }
   if (strcmp((char *)recv_buffer, "s") == 0) {
-    sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, 0);
+    sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, GAMEMODE_SURVIVAL);
     player->gamemode = GAMEMODE_SURVIVAL;
     return 0;
   }
@@ -1393,79 +1395,6 @@ int cs_chatCommand(int client_fd) {
   return 0;
 }
 
-// A generic component structure
-typedef struct Component {
-  uint32_t type;
-  void *data; // pointer to component-specific data
-} Component;
-
-// Slot structure
-typedef struct Slot {
-  uint32_t count;
-  uint32_t id;
-  uint32_t components_to_add_count;
-  Component *components_to_add;
-  uint32_t components_to_remove_count;
-  uint32_t *components_to_remove; // just store type IDs
-} Slot;
-
-// Reads a single component (simplified)
-Component readComponent(int fd) {
-  Component comp = {0};
-  comp.type = readVarInt(fd);
-
-  // NOTE: You need to handle each component type individually!
-  // For now, we'll just skip the actual component data
-  // Later you can parse it based on comp.type
-  comp.data = NULL; // placeholder
-  return comp;
-}
-
-// Reads a Slot from the client_fd
-Slot readSlot(int client_fd) {
-  Slot s = {0};
-
-  s.count = readVarInt(client_fd);
-
-  if (s.count == 0) {
-    // Empty slot, nothing else to read
-    s.id = 0;
-    s.components_to_add_count = 0;
-    s.components_to_add = NULL;
-    s.components_to_remove_count = 0;
-    s.components_to_remove = NULL;
-    return s;
-  }
-
-  // Item is present
-  s.id = readVarInt(client_fd);
-
-  // Components to add
-  s.components_to_add_count = readVarInt(client_fd);
-  if (s.components_to_add_count > 0) {
-    s.components_to_add = malloc(sizeof(Component) * s.components_to_add_count);
-    for (uint32_t i = 0; i < s.components_to_add_count; i++) {
-      s.components_to_add[i] = readComponent(client_fd);
-    }
-  } else {
-    s.components_to_add = NULL;
-  }
-
-  // Components to remove
-  s.components_to_remove_count = readVarInt(client_fd);
-  if (s.components_to_remove_count > 0) {
-    s.components_to_remove =
-        malloc(sizeof(uint32_t) * s.components_to_remove_count);
-    for (uint32_t i = 0; i < s.components_to_remove_count; i++) {
-      s.components_to_remove[i] = readVarInt(client_fd);
-    }
-  } else {
-    s.components_to_remove = NULL;
-  }
-
-  return s;
-}
-
 int cs_setCreativeModeSlot(int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player))
@@ -1475,9 +1404,13 @@ int cs_setCreativeModeSlot(int client_fd) {
 
   uint16_t slot = clientSlotToServerSlot(0, readShort(client_fd));
 
-  Slot slotItem = readSlot(client_fd);
-  player->inventory_items[slot] = slotItem.id;
-  player->inventory_count[slot] = slotItem.count;
+  player->inventory_count[slot] = readVarInt(client_fd);
+  player->inventory_items[slot] = readVarInt(client_fd);
+
+  // Currently, if an item with components was loaded, the protocol would drop
+  // packets and possibly disconnect the player
+  readVarInt(client_fd); // components to add
+  readVarInt(client_fd); // components to remove
 
   return 0;
 }

@@ -373,7 +373,8 @@ void spawnPlayer(PlayerData *player) {
   sc_updateTime(player->client_fd, world_time);
 
 #ifdef ENABLE_PLAYER_FLIGHT
-  if (player->gamemode != 1 && player->gamemode != 3) {
+  if (player->gamemode != GAMEMODE_CREATIVE &&
+      player->gamemode != GAMEMODE_SPECTATOR) {
     // Give the player flight (for testing)
     sc_playerAbilities(player->client_fd, 0x04);
   }
@@ -1207,7 +1208,7 @@ void handlePlayerAction(PlayerData *player, int action, short x, short y,
 
   // In creative, only the "start mining" action is sent
   // No additional verification is performed, the block is simply removed
-  if (action == 0 && player->gamemode == 1) {
+  if (action == 0 && player->gamemode == GAMEMODE_CREATIVE) {
     makeBlockChange(x, y, z, 0);
     return;
   }
@@ -1424,7 +1425,8 @@ void handlePlayerUseItem(PlayerData *player, short x, short y, short z,
     if (makeBlockChange(x, y, z, block))
       return;
     // Decrease item amount in selected slot
-    *count -= 1;
+    if (player->gamemode != GAMEMODE_CREATIVE)
+      *count -= 1;
     // Clear item id in slot if amount is zero
     if (*count == 0)
       *item = 0;
