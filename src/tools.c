@@ -169,6 +169,12 @@ ssize_t writeDouble(int client_fd, double num) {
   return send_all(client_fd, &bits, sizeof(bits));
 }
 
+ssize_t writeString(int client_fd, const char *str) {
+  size_t len = strlen(str);
+  writeVarInt(client_fd, (uint32_t)len);
+  return send_all(client_fd, str, len);
+}
+
 uint8_t readByte(int client_fd) {
   recv_count = recv_all(client_fd, recv_buffer, 1, false);
   return recv_buffer[0];

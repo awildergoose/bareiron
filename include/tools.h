@@ -21,6 +21,7 @@ ssize_t writeUint32(int client_fd, uint32_t num);
 ssize_t writeUint64(int client_fd, uint64_t num);
 ssize_t writeFloat(int client_fd, float num);
 ssize_t writeDouble(int client_fd, double num);
+ssize_t writeString(int client_fd, const char *str);
 
 uint8_t readByte(int client_fd);
 uint16_t readUint16(int client_fd);

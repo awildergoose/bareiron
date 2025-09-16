@@ -1,3 +1,4 @@
+#include "brigadier.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1367,6 +1368,8 @@ int sc_registries(int client_fd) {
   return 0;
 }
 
+#include "packetbuilder.h"
+
 int cs_chatCommand(int client_fd) {
   readString(client_fd);
   if (recv_count == -1)
@@ -1384,6 +1387,15 @@ int cs_chatCommand(int client_fd) {
   if (strcmp((char *)recv_buffer, "s") == 0) {
     sc_gameEvent(client_fd, GAME_EVENT_CHANGE_GAME_MODE, GAMEMODE_SURVIVAL);
     player->gamemode = GAMEMODE_SURVIVAL;
+    return 0;
+  }
+  if (strcmp((char *)recv_buffer, "endtest") == 0) {
+    PacketBuilder *pb = pb_create(128);
+    pb_writeByte(pb, 4);
+    pb_writeFloat(pb, 1);
+    pb_send(pb, client_fd, 0x22);
+    pb_free(pb);
+
     return 0;
   }
 
