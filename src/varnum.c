@@ -1,6 +1,11 @@
 #include <stdint.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#ifdef _WIN64
+  #include <win/arpa/inet.h>
+  #include <win/unistd.h>
+#else
+  #include <arpa/inet.h>
+  #include <unistd.h>
+#endif
 
 #include "varnum.h"
 #include "globals.h"

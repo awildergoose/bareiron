@@ -1,7 +1,11 @@
 #ifndef H_PROCEDURES
 #define H_PROCEDURES
 
+#ifdef _WIN64
+#include <win/unistd.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "globals.h"
 

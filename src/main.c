@@ -19,10 +19,17 @@
   #include "lwip/netdb.h"
 #else
   #include <sys/types.h>
-  #include <sys/socket.h>
+#ifdef _WIN64
+  #include <win/netinet/in.h>
+  #include <win/sys/socket.h>
+  #include <win/arpa/inet.h>
+  #include <win/unistd.h>
+#else
   #include <netinet/in.h>
+  #include <sys/socket.h>
   #include <arpa/inet.h>
   #include <unistd.h>
+#endif
   #include <time.h>
 #endif
 

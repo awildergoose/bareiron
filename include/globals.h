@@ -2,14 +2,24 @@
 #define H_GLOBALS
 
 #include <stdint.h>
+#ifdef _WIN64
+#include <win/unistd.h>
+#define _X86_
+#else
 #include <unistd.h>
+#endif
+#include <synchapi.h>
 
 #ifdef ESP_PLATFORM
-  #define WIFI_SSID "your-ssid"
-  #define WIFI_PASS "your-password"
-  void task_yield ();
+#define WIFI_SSID "your-ssid"
+#define WIFI_PASS "your-password"
+void task_yield();
 #else
-  #define task_yield();
+#ifdef _WIN64
+inline void task_yield() { Sleep(1); }
+#else
+#define task_yield() ;
+#endif
 #endif
 
 #define true 1
@@ -82,7 +92,7 @@
 // writes. Flash is typically *very* slow and unreliable, which is why
 // this option is disabled by default when targeting ESP-IDF.
 #ifndef ESP_PLATFORM
-  #define SYNC_WORLD_TO_DISK
+#define SYNC_WORLD_TO_DISK
 #endif
 
 // The minimum interval (in microseconds) at which certain data is written
@@ -176,8 +186,8 @@ extern char motd[];
 extern uint8_t motd_len;
 
 #ifdef SEND_BRAND
-  extern char brand[];
-  extern uint8_t brand_len;
+extern char brand[];
+extern uint8_t brand_len;
 #endif
 
 extern uint16_t client_count;
@@ -200,9 +210,9 @@ typedef struct {
   short z;
   short visited_x[VISITED_HISTORY];
   short visited_z[VISITED_HISTORY];
-  #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
-    uint16_t packets_since_update;
-  #endif
+#ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
+  uint16_t packets_since_update;
+#endif
   int8_t yaw;
   int8_t pitch;
   uint8_t grounded_y;

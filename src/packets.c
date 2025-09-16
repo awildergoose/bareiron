@@ -6,8 +6,13 @@
   #include "lwip/netdb.h"
   #include "esp_task_wdt.h"
 #else
+#ifdef _WIN64
+  #include <win/arpa/inet.h>
+  #include <win/unistd.h>
+#else
   #include <arpa/inet.h>
   #include <unistd.h>
+#endif
 #endif
 
 #include "globals.h"

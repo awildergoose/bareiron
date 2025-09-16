@@ -7,9 +7,15 @@
   #include "lwip/netdb.h"
   #include "esp_timer.h"
 #else
+#ifdef _WIN64
+  #include <win/sys/socket.h>
+  #include <win/arpa/inet.h>
+  #include <win/unistd.h>
+#else
   #include <sys/socket.h>
   #include <arpa/inet.h>
   #include <unistd.h>
+#endif
   #include <time.h>
   #ifndef CLOCK_MONOTONIC
     #define CLOCK_MONOTONIC 1
@@ -21,6 +27,7 @@
 #include "procedures.h"
 #include "tools.h"
 
+#ifndef _WIN64
 #ifndef htonll
   static uint64_t htonll (uint64_t value) {
   #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -30,6 +37,7 @@
     return value;
   #endif
   }
+#endif
 #endif
 
 // Keep track of the total amount of bytes received with recv_all
